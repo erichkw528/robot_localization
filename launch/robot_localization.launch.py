@@ -7,11 +7,18 @@ from launch.substitutions import EnvironmentVariable
 import pathlib
 import launch.actions
 from launch.actions import DeclareLaunchArgument
+from pathlib import Path
 
 
 def generate_launch_description():
     return LaunchDescription(
         [
+            launch_ros.actions.Node(
+                package="tf2_ros",
+                executable="static_transform_publisher",
+                name="swri_transform",
+                arguments=["0", "0", "0", "0", "0", "0", "gps", "map"],
+            ),
             launch_ros.actions.Node(
                 package="robot_localization",
                 executable="navsat_transform_node",
@@ -19,13 +26,12 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     os.path.join(
-                        get_package_share_directory("roar_robot_localization"),
+                        get_package_share_directory("robot_localization"),
                         "config",
                         "navsat_transform.yaml",
-                    )
+                    ),
                 ],
-                # topic defined within the node -> actual topic
-                remappings=[("/gps/fix", "/gps/fix"), ("imu", "/gps/imu")],
+                remappings=[("/gps/fix", "/gps/fix"), ("/imu", "/gps/imu")],
             ),
         ]
     )
