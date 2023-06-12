@@ -46,4 +46,6 @@ navsat_transform_node:
         # Instead of using the first GPS location and IMU-based heading for the local-frame origin, users can specify the
         # origin (datum) using this parameter. The fields in the parameter represent latitude and longitude in decimal degrees,
         # and heading in radians. As navsat_transform_node assumes an ENU standard, a 0 heading corresponds to east.
-        datum: [55.944904, -3.186693, 0.0] # TODO: change this to relative start points
+        datum: [37.91540359617941, -122.33422002567134, -29.478766670450568] # TODO: change this to relative start points
+
+        use_local_cartesian: false
