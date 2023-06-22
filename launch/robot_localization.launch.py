@@ -14,11 +14,33 @@ def generate_launch_description():
     return LaunchDescription(
         [
             launch_ros.actions.Node(
-                package="tf2_ros",
-                executable="static_transform_publisher",
-                name="swri_transform",
-                arguments=["0", "0", "0", "0", "0", "0", "gps", "map"],
+                package="roar_robot_localization",
+                name="pose_to_pose_covariant_converter",
+                executable="pose_converter_node",
+                remappings=[
+                    ("input_pose", "/gps/pose"),
+                    ("output_pose_with_covariance", "gps/poseWithCov"),
+                ],
             ),
+            launch_ros.actions.Node(
+                package="robot_localization",
+                executable="ekf_node",
+                name="ekf_filter_node",
+                output="screen",
+                parameters=[
+                    os.path.join(
+                        get_package_share_directory("roar_robot_localization"),
+                        "config",
+                        "ekf.yaml",
+                    )
+                ],
+            ),
+            # launch_ros.actions.Node(
+            #     package="tf2_ros",
+            #     executable="static_transform_publisher",
+            #     name="swri_transform",
+            #     arguments=["0", "0", "0", "0", "0", "0", "map", "odom"],
+            # ),
             launch_ros.actions.Node(
                 package="robot_localization",
                 executable="navsat_transform_node",
@@ -26,7 +48,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     os.path.join(
-                        get_package_share_directory("robot_localization"),
+                        get_package_share_directory("roar_robot_localization"),
                         "config",
                         "navsat_transform.yaml",
                     ),
