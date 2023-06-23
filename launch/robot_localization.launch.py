@@ -11,49 +11,36 @@ from pathlib import Path
 
 
 def generate_launch_description():
-    return LaunchDescription(
-        [
-            launch_ros.actions.Node(
-                package="roar_robot_localization",
-                name="pose_to_pose_covariant_converter",
-                executable="pose_converter_node",
-                remappings=[
-                    ("input_pose", "/gps/pose"),
-                    ("output_pose_with_covariance", "gps/poseWithCov"),
-                ],
-            ),
-            launch_ros.actions.Node(
-                package="robot_localization",
-                executable="ekf_node",
-                name="ekf_filter_node",
-                output="screen",
-                parameters=[
-                    os.path.join(
-                        get_package_share_directory("roar_robot_localization"),
-                        "config",
-                        "ekf.yaml",
-                    )
-                ],
-            ),
-            # launch_ros.actions.Node(
-            #     package="tf2_ros",
-            #     executable="static_transform_publisher",
-            #     name="swri_transform",
-            #     arguments=["0", "0", "0", "0", "0", "0", "map", "odom"],
-            # ),
-            launch_ros.actions.Node(
-                package="robot_localization",
-                executable="navsat_transform_node",
-                name="navsat_transform_node",
-                output="screen",
-                parameters=[
-                    os.path.join(
-                        get_package_share_directory("roar_robot_localization"),
-                        "config",
-                        "navsat_transform.yaml",
-                    ),
-                ],
-                remappings=[("/gps/fix", "/gps/fix"), ("/imu", "/gps/imu")],
-            ),
-        ]
+
+    ld = LaunchDescription()
+
+    """Static publisher"""
+    static_publisher = launch_ros.actions.Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="swri_transform",
+        arguments=["0", "0", "0", "0", "0", "0", "map", "odom"],
     )
+    ld.add_action(static_publisher)
+
+    """odom_publisher"""
+    odom_publisher = launch_ros.actions.Node(
+        package="roar_robot_localization",
+        executable="odom_publisher",
+        name="roar_odom_publisher",
+        output="screen",
+        parameters=[
+            os.path.join(
+                get_package_share_directory("roar_robot_localization"),
+                "params",
+                "configs.yaml",
+            ),
+        ],
+        remappings=[
+            ("/gps/fix", "/gps/fix"),
+            ("/gps/imu", "/gps/imu"),
+            ("/gps/pose", "/gps/pose"),
+        ],
+    )
+    ld.add_action(odom_publisher)
+    return ld
