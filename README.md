@@ -1,17 +1,7 @@
 
-With vanilla Visualization
-1. Launch this package with visualization
-   `ros2 launch roar_robot_localization robot_localization_visualize.launch.py`
+1. play ROS bag
+2. `ros2 launch roar_robot_localization robot_localization.launch.py`
 
-2. launch bag / physical GPS
-`ros2 launch roar_robot_localization robot_localization.launch.py`
+You should see both arrived message
 
-
-
-![ A test image](docs/result.png)
-
-
-TODO: 
-1. Figure out why `robot_localization` is not emitting any `/odometry` data
-
-
+TODO: specified in odom_publisher.cpp, cmakelist. 

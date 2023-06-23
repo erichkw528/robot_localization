@@ -8,6 +8,8 @@ find_package(visualization_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 include_directories(
         include
@@ -20,6 +22,8 @@ set(dependencies
         std_msgs
         message_filters
         sensor_msgs
+        nav_msgs
+        tf2_ros
 )
 
 add_executable(odom_publisher src/odom_publisher.cpp)
