@@ -30,15 +30,15 @@ set(dependencies
   GeographicLib
 )
 
-add_executable(odom_publisher src/odom_publisher.cpp)
+add_executable(localizationHack src/localization_hack.cpp)
 
-ament_target_dependencies(odom_publisher ${dependencies})
+ament_target_dependencies(localizationHack ${dependencies})
 
-target_include_directories(odom_publisher PUBLIC
+target_include_directories(localizationHack PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-install(TARGETS odom_publisher
+install(TARGETS localizationHack
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})

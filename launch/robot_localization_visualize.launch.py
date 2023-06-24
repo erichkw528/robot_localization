@@ -15,7 +15,7 @@ def generate_launch_description():
     base_path = Path(get_package_share_directory("roar_robot_localization"))
 
     rviz_path: Path = base_path / "config" / "waypoint_collection_visualization.rviz"
-
+    assert False, "NOT DONE YET"
     return LaunchDescription(
         [
             launch_ros.actions.Node(

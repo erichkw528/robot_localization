@@ -33,11 +33,11 @@ struct GpsPosition
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::NavSatFix,
                                                         geometry_msgs::msg::PoseStamped>
     ApproximateSyncPolicy;
-class OdomPublisher : public rclcpp::Node
+class LocalizationHack : public rclcpp::Node
 {
 public:
-  OdomPublisher();
-  ~OdomPublisher();
+  LocalizationHack();
+  ~LocalizationHack();
 
 protected:
   // subscribers

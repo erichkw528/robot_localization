@@ -23,11 +23,11 @@ def generate_launch_description():
     )
     ld.add_action(static_publisher)
 
-    """odom_publisher"""
+    """localization_hack"""
     odom_publisher = launch_ros.actions.Node(
         package="roar_robot_localization",
-        executable="odom_publisher",
-        name="roar_odom_publisher",
+        executable="localizationHack",
+        name="localization_hack",
         output="screen",
         parameters=[
             os.path.join(

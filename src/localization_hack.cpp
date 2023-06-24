@@ -1,4 +1,4 @@
-#include "roar_robot_localization/odom_publisher.hpp"
+#include "roar_robot_localization/localization_hack.hpp"
 #include <rmw/qos_profiles.h>
 #include "rmw/types.h"
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -10,7 +10,7 @@
 namespace roar
 {
 
-OdomPublisher::OdomPublisher() : Node("odom_publisher_node")
+LocalizationHack::LocalizationHack() : Node("localization_hack")
 {
   // variables
   this->declare_parameter("odom_frame", "odom");
@@ -37,7 +37,7 @@ OdomPublisher::OdomPublisher() : Node("odom_publisher_node")
   pose_sub_.subscribe(this, "/gps/pose", custom_qos_profile);
   temp_sync_ = std::make_shared<message_filters::Synchronizer<ApproximateSyncPolicy>>(ApproximateSyncPolicy(100),
                                                                                       imu_sub_, gps_sub_, pose_sub_);
-  temp_sync_->registerCallback(std::bind(&OdomPublisher::topic_callback, this, std::placeholders::_1,
+  temp_sync_->registerCallback(std::bind(&LocalizationHack::topic_callback, this, std::placeholders::_1,
                                          std::placeholders::_2, std::placeholders::_3));
   // Create a custom QoS profile
   rclcpp::QoS profile(10);  // Set the buffer size to 10
@@ -49,7 +49,7 @@ OdomPublisher::OdomPublisher() : Node("odom_publisher_node")
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
 
   timer_ = create_wall_timer(std::chrono::milliseconds(this->get_parameter("rate_millis").as_int()),
-                             std::bind(&OdomPublisher::timer_callback, this));
+                             std::bind(&LocalizationHack::timer_callback, this));
 
   // initialize buffer
   this->bufferSize = this->get_parameter("buffer_size").as_int();
@@ -57,14 +57,14 @@ OdomPublisher::OdomPublisher() : Node("odom_publisher_node")
   RCLCPP_INFO(get_logger(), "OdomPublisher initialized. BufferSize = [%d]", this->bufferSize);
 }
 
-OdomPublisher::~OdomPublisher()
+LocalizationHack::~LocalizationHack()
 {
   // Perform any necessary cleanup here
 }
 
-void OdomPublisher::topic_callback(const sensor_msgs::msg::Imu::ConstSharedPtr& imu_msg,
-                                   const sensor_msgs::msg::NavSatFix::ConstSharedPtr& gps_msg,
-                                   const geometry_msgs::msg::PoseStamped::ConstSharedPtr& pose_msg)
+void LocalizationHack::topic_callback(const sensor_msgs::msg::Imu::ConstSharedPtr& imu_msg,
+                                      const sensor_msgs::msg::NavSatFix::ConstSharedPtr& gps_msg,
+                                      const geometry_msgs::msg::PoseStamped::ConstSharedPtr& pose_msg)
 {
   /**
    * 1. store data in a variable length queue, overwrite previous data if exceed length n
@@ -84,7 +84,7 @@ void OdomPublisher::topic_callback(const sensor_msgs::msg::Imu::ConstSharedPtr& 
  * 4. publish transformation from odom -> base_link
  * 5. publish nav_msgs/Odom
  */
-void OdomPublisher::timer_callback()
+void LocalizationHack::timer_callback()
 {
   if (buffer.size() < bufferSize)
   {
@@ -100,7 +100,7 @@ void OdomPublisher::timer_callback()
   RCLCPP_DEBUG(get_logger(), to_string(*odom));
 }
 
-void OdomPublisher::p_calcOdom(const std::vector<BufferData>* buffer, nav_msgs::msg::Odometry::SharedPtr odom)
+void LocalizationHack::p_calcOdom(const std::vector<BufferData>* buffer, nav_msgs::msg::Odometry::SharedPtr odom)
 {
   // Get the latest data from the buffer
   const BufferData& latestData = buffer->back();
@@ -175,7 +175,7 @@ void OdomPublisher::p_calcOdom(const std::vector<BufferData>* buffer, nav_msgs::
   odom->twist.twist.angular.z = angular_velocity_z;
 }
 
-void OdomPublisher::publish_transform(const nav_msgs::msg::Odometry::SharedPtr odom)
+void LocalizationHack::publish_transform(const nav_msgs::msg::Odometry::SharedPtr odom)
 {
   geometry_msgs::msg::TransformStamped t;
 
@@ -200,7 +200,7 @@ void OdomPublisher::publish_transform(const nav_msgs::msg::Odometry::SharedPtr o
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<roar::OdomPublisher>();
+  auto node = std::make_shared<roar::LocalizationHack>();
   rclcpp::spin(node->get_node_base_interface());
   rclcpp::shutdown();
 
