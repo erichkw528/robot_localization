@@ -1,0 +1,12 @@
+/localization_hack:
+  ros__parameters:
+    odom_frame: odom
+    base_link_frame: base_link
+    buffer_size: 5
+    map_origin:
+      altitude: -28.82823686953634
+      latitude: 37.91525949274556
+      longitude: -122.33371777888338
+    rate_millis: 50
+    use_sim_time: true
+    debug: false

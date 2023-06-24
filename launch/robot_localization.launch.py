@@ -11,27 +11,37 @@ from pathlib import Path
 
 
 def generate_launch_description():
-    return LaunchDescription(
-        [
-            launch_ros.actions.Node(
-                package="tf2_ros",
-                executable="static_transform_publisher",
-                name="swri_transform",
-                arguments=["0", "0", "0", "0", "0", "0", "gps", "map"],
-            ),
-            launch_ros.actions.Node(
-                package="robot_localization",
-                executable="navsat_transform_node",
-                name="navsat_transform_node",
-                output="screen",
-                parameters=[
-                    os.path.join(
-                        get_package_share_directory("robot_localization"),
-                        "config",
-                        "navsat_transform.yaml",
-                    ),
-                ],
-                remappings=[("/gps/fix", "/gps/fix"), ("/imu", "/gps/imu")],
-            ),
-        ]
+
+    ld = LaunchDescription()
+
+    """Static publisher"""
+    static_publisher = launch_ros.actions.Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="swri_transform",
+        arguments=["0", "0", "0", "0", "0", "0", "map", "odom"],
     )
+    ld.add_action(static_publisher)
+
+    """localization_hack"""
+    odom_publisher = launch_ros.actions.Node(
+        package="roar_robot_localization",
+        executable="localizationHack",
+        name="localization_hack",
+        output="screen",
+        parameters=[
+            os.path.join(
+                get_package_share_directory("roar_robot_localization"),
+                "params",
+                "configs.yaml",
+            ),
+        ],
+        remappings=[
+            ("/gps/fix", "/gps/fix"),
+            ("/gps/imu", "/gps/imu"),
+            ("/gps/pose", "/gps/pose"),
+            ("/output/odom", "/odom"),
+        ],
+    )
+    ld.add_action(odom_publisher)
+    return ld
