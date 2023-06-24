@@ -45,7 +45,7 @@ LocalizationHack::LocalizationHack() : Node("localization_hack")
   profile.durability(rmw_qos_durability_policy_t::RMW_QOS_POLICY_DURABILITY_VOLATILE);
   // initialize publisher
   odom_publisher_ =
-      this->create_publisher<nav_msgs::msg::Odometry>("odom", profile);  // TODO: @sebastian change to best effort QoS
+      this->create_publisher<nav_msgs::msg::Odometry>("/output/odom", profile);  // TODO: @sebastian change to best effort QoS
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
 
   timer_ = create_wall_timer(std::chrono::milliseconds(this->get_parameter("rate_millis").as_int()),
