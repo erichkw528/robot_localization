@@ -14,8 +14,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     base_path = Path(get_package_share_directory("roar_robot_localization"))
 
-    rviz_path: Path = base_path / "config" / "waypoint_collection_visualization.rviz"
-    assert False, "NOT DONE YET"
+    rviz_path: Path = base_path / "params" / "localization.rviz"
     return LaunchDescription(
         [
             launch_ros.actions.Node(
@@ -31,6 +30,15 @@ def generate_launch_description():
                         get_package_share_directory("roar_robot_localization"),
                         "launch",
                         "robot_localization.launch.py",
+                    )
+                )
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(
+                        get_package_share_directory("roar-gokart-urdf"),
+                        "launch",
+                        "state_publisher.launch.py",
                     )
                 )
             ),
