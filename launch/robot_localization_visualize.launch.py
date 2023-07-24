@@ -32,15 +32,6 @@ def generate_launch_description():
                         "robot_localization.launch.py",
                     )
                 )
-            ),
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(
-                        get_package_share_directory("roar-gokart-urdf"),
-                        "launch",
-                        "state_publisher.launch.py",
-                    )
-                )
-            ),
+            )
         ]
     )
