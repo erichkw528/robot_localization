@@ -162,8 +162,8 @@ void LocalizationHack::p_calcOdom(const std::vector<BufferData>* buffer, nav_msg
   //    proj.Forward(latestData.gps_msg->latitude, latestData.gps_msg->longitude, latestData.gps_msg->altitude,
   //    odom->pose.pose.position.x, odom->pose.pose.position.y,
   //  odom->pose.pose.position.z);
-
-  odom->pose.pose.orientation = latestData.imu_msg->orientation;
+    
+//   odom->pose.pose.orientation = latestData.imu_msg->orientation;
 
   // Fill in the velocity
   odom->twist.twist.linear.x = avgVx;
