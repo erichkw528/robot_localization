@@ -37,7 +37,7 @@ def generate_launch_description():
             ),
         ],
         remappings=[
-            ("/gps/fix", "/gps/fix"),
+            ("/gps/fix", "/roar/gnss"),
             ("/gps/imu", "/gps/imu"),
             ("/gps/pose", "/gps/pose"),
             ("/output/odom", "/odom"),

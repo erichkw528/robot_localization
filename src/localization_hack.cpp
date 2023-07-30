@@ -120,8 +120,19 @@ namespace roar
     transformStamped.transform.translation.z = latest_cartesian_position.z;
 
     // compute orientation from latest and oldest cartesian position
-    double angle = std::atan2(oldest_cartesian_position.y - latest_cartesian_position.y,
-                              oldest_cartesian_position.x - latest_cartesian_position.x);
+    // if the difference bewteen old y and new y is too small, angle = 0
+    // else, compute the angle
+    double angle = 0;
+
+    if (std::abs(latest_cartesian_position.y - oldest_cartesian_position.y) < 0.0001 || std::abs(latest_cartesian_position.x - oldest_cartesian_position.x) < 0.0001)
+    {
+      RCLCPP_DEBUG(this->get_logger(), "Angle is 0");
+    }
+    else
+    {
+      angle = std::atan2(latest_cartesian_position.y - oldest_cartesian_position.y,
+                         latest_cartesian_position.x - oldest_cartesian_position.x);
+    }
 
     geometry_msgs::msg::Quaternion orientation = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), angle));
     transformStamped.transform.rotation = orientation;
