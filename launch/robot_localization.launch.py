@@ -14,14 +14,14 @@ def generate_launch_description():
 
     ld = LaunchDescription()
 
-    """Static publisher"""
-    static_publisher = launch_ros.actions.Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        name="swri_transform",
-        arguments=["0", "0", "0", "0", "0", "0", "map", "odom"],
-    )
-    ld.add_action(static_publisher)
+    # """Static publisher"""
+    # static_publisher = launch_ros.actions.Node(
+    #     package="tf2_ros",
+    #     executable="static_transform_publisher",
+    #     name="swri_transform",
+    #     arguments=["0", "0", "0", "0", "0", "0", "map", "odom"],
+    # )
+    # ld.add_action(static_publisher)
 
     """localization_hack"""
     odom_publisher = launch_ros.actions.Node(
