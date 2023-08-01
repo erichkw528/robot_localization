@@ -40,7 +40,6 @@ def generate_launch_description():
             ("/gps/fix", "/roar/gnss"),
             ("/gps/imu", "/gps/imu"),
             ("/gps/pose", "/gps/pose"),
-            ("/output/odom", "/odom"),
         ],
     )
     ld.add_action(odom_publisher)

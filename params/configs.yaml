@@ -3,7 +3,7 @@
     map_frame: map
     base_link_frame: base_link
     buffer_size: 5
-    datum: "37.91530097224505,-122.33385852782446,-26.513797709718347"
-    rate_millis: 50
+    datum: "37.91479456,-122.3342746,0.0"
+    rate_millis: 100
     use_sim_time: true
     debug: false

@@ -28,34 +28,10 @@ namespace roar
 
     this->parse_datum();
 
-    // Initialize subscribers and synchronizer here
-    rmw_qos_profile_t custom_qos_profile = rmw_qos_profile_default;
-    custom_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
-    custom_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
-    custom_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
-    imu_sub_.subscribe(this, "/gps/imu", custom_qos_profile);
-    gps_sub_.subscribe(this, "/gps/fix", custom_qos_profile);
-    pose_sub_.subscribe(this, "/gps/pose", custom_qos_profile);
-    temp_sync_ = std::make_shared<message_filters::Synchronizer<ApproximateSyncPolicy>>(ApproximateSyncPolicy(100),
-                                                                                        imu_sub_, gps_sub_, pose_sub_);
-    temp_sync_->registerCallback(std::bind(&LocalizationHack::topic_callback, this, std::placeholders::_1,
-                                           std::placeholders::_2, std::placeholders::_3));
-    // Create a custom QoS profile
-    rclcpp::QoS profile(10); // Set the buffer size to 10
-    profile.reliability(rmw_qos_reliability_policy_t::RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
-    profile.durability(rmw_qos_durability_policy_t::RMW_QOS_POLICY_DURABILITY_VOLATILE);
-    // initialize publisher
-    odom_publisher_ =
-        this->create_publisher<nav_msgs::msg::Odometry>("/output/odom", profile); // TODO: @sebastian change to best effort QoS
-    tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
+    subscription_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
+        "/gps/fix", 10, std::bind(&LocalizationHack::topic_callback, this, _1));
 
-    timer_ = create_wall_timer(std::chrono::milliseconds(this->get_parameter("rate_millis").as_int()),
-                               std::bind(&LocalizationHack::timer_callback, this));
-
-    // initialize buffer
-    this->bufferSize = this->get_parameter("buffer_size").as_int();
-
-    RCLCPP_INFO(get_logger(), "OdomPublisher initialized. BufferSize = [%d]", this->bufferSize);
+    this->tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
   }
 
   LocalizationHack::~LocalizationHack()
@@ -63,101 +39,50 @@ namespace roar
     // Perform any necessary cleanup here
   }
 
-  void LocalizationHack::topic_callback(const sensor_msgs::msg::Imu::ConstSharedPtr &imu_msg,
-                                        const sensor_msgs::msg::NavSatFix::ConstSharedPtr &gps_msg,
-                                        const geometry_msgs::msg::PoseStamped::ConstSharedPtr &pose_msg)
+  void LocalizationHack::topic_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps_msg)
   {
-    /**
-     * 1. store data in a variable length queue, overwrite previous data if exceed length n
-     */
-    BufferData buffer_data{imu_msg, gps_msg, pose_msg};
-    buffer.push_back(buffer_data);
-    if (buffer.size() > bufferSize)
+    // convert coordinate to cartesian space
+    CartesianPosition cartesian_position;
+    convert_gnss_to_local_cartesian(gps_msg, cartesian_position);
+
+    // check if this data can be used to compute steering angle
+    // if yes, memorize this
+    // if not, do nothing
+    if (this->latest_cartesian_used_for_steering_ == nullptr)
     {
-      buffer.erase(buffer.begin());
+      this->latest_cartesian_used_for_steering_ = std::make_shared<CartesianPosition>(cartesian_position);
     }
-  }
-
-  /**
-   * 1. if the buffer is not full full, else, don't do anything (early return)
-   * 2. compute the velocity
-   * 3. construct the nav_msgs/Odometry object
-   * 4. publish transformation from odom -> base_link
-   * 5. publish nav_msgs/Odom
-   */
-  void LocalizationHack::timer_callback()
-  {
-    if (buffer.size() < bufferSize)
+    else if (this->is_steering_angle_computable(cartesian_position))
     {
-      RCLCPP_DEBUG(this->get_logger(), "Buffer size [%d] < [%d]", buffer.size(), bufferSize);
-      return;
-    }
-    this->updateLatestTransform();
-    this->publishLatestTransform();
-  }
+      RCLCPP_DEBUG(get_logger(), "---------------------");
 
-  void LocalizationHack::updateLatestTransform()
-  {
-    const BufferData &newData = buffer.back();
-    const BufferData &oldestData = buffer.front();
+      geometry_msgs::msg::TransformStamped transformStamped;
+      transformStamped.header.stamp = this->now();
+      transformStamped.header.frame_id = this->get_parameter("map_frame").as_string();
+      transformStamped.child_frame_id = this->get_parameter("base_link_frame").as_string();
 
-    // latest cartesian coord with respect to datum
-    CartesianPosition latest_cartesian_position;
-    convert_gnss_to_local_cartesian(newData.gps_msg, latest_cartesian_position);
+      // compute steering angle
+      double angle = std::atan2(this->latest_cartesian_used_for_steering_->y - cartesian_position.y,
+                                this->latest_cartesian_used_for_steering_->x - cartesian_position.x);
+      geometry_msgs::msg::Quaternion orientation = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), angle));
 
-    CartesianPosition oldest_cartesian_position;
-    convert_gnss_to_local_cartesian(oldestData.gps_msg, oldest_cartesian_position);
+      // compute position
+      transformStamped.transform.translation.x = cartesian_position.x;
+      transformStamped.transform.translation.y = cartesian_position.y;
+      transformStamped.transform.translation.z = cartesian_position.z;
+      transformStamped.transform.rotation = orientation;
 
-    // construct the Transform message
-    geometry_msgs::msg::TransformStamped transformStamped;
-    transformStamped.header.stamp = newData.gps_msg->header.stamp;
-    transformStamped.header.frame_id = this->get_parameter("map_frame").as_string();
-    transformStamped.child_frame_id = this->get_parameter("base_link_frame").as_string();
+      // publish tf
+      tf_broadcaster_->sendTransform(transformStamped);
 
-    // compute position
-    transformStamped.transform.translation.x = latest_cartesian_position.x;
-    transformStamped.transform.translation.y = latest_cartesian_position.y;
-    transformStamped.transform.translation.z = latest_cartesian_position.z;
-
-    // compute orientation from latest and oldest cartesian position
-    // if the difference bewteen old y and new y is too small, angle = 0
-    // else, compute the angle
-    double angle = 0;
-
-    if (std::abs(latest_cartesian_position.y - oldest_cartesian_position.y) < 0.0001 || std::abs(latest_cartesian_position.x - oldest_cartesian_position.x) < 0.0001)
-    {
-      RCLCPP_DEBUG(this->get_logger(), "Angle is 0");
+      RCLCPP_DEBUG(this->get_logger(), "GNSS: [%.6f, %.6f, %.6f]", gps_msg->latitude, gps_msg->longitude, gps_msg->altitude);
+      RCLCPP_DEBUG(this->get_logger(), "local_coord: [%.6f, %.6f, %.6f]", cartesian_position.x, cartesian_position.y, cartesian_position.z);
+      RCLCPP_DEBUG(this->get_logger(), "angle: %.6f", angle);
     }
     else
     {
-      angle = std::atan2(latest_cartesian_position.y - oldest_cartesian_position.y,
-                         latest_cartesian_position.x - oldest_cartesian_position.x);
+      RCLCPP_WARN(this->get_logger(), "Transform is not computable, skipping...");
     }
-
-    geometry_msgs::msg::Quaternion orientation = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), angle));
-    transformStamped.transform.rotation = orientation;
-    // update latest transform
-    latest_transform_ = std::make_unique<geometry_msgs::msg::TransformStamped>(transformStamped);
-
-    // print latest transform
-    RCLCPP_DEBUG(this->get_logger(), "Latest transform: [%f, %f, %f, %f, %f, %f, %f] | angle: [%f]",
-                 latest_transform_->transform.translation.x,
-                 latest_transform_->transform.translation.y,
-                 latest_transform_->transform.translation.z,
-                 latest_transform_->transform.rotation.x,
-                 latest_transform_->transform.rotation.y,
-                 latest_transform_->transform.rotation.z,
-                 latest_transform_->transform.rotation.w, angle);
-  }
-
-  void LocalizationHack::publishLatestTransform()
-  {
-    if (this->latest_transform_ == nullptr)
-    {
-      return;
-    }
-
-    this->tf_broadcaster_->sendTransform(*this->latest_transform_);
   }
 
   void LocalizationHack::parse_datum()
