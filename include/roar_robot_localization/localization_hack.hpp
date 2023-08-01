@@ -69,31 +69,9 @@ namespace roar
 
     std::shared_ptr<geometry_msgs::msg::TransformStamped> latest_transform_;
     std::shared_ptr<CartesianPosition> latest_cartesian_used_for_steering_;
-    bool is_steering_angle_computable(CartesianPosition cartesian_position)
-    {
-      if (latest_cartesian_used_for_steering_ == nullptr)
-      {
-        return false;
-      }
-      double distance = sqrt(pow(cartesian_position.x - latest_cartesian_used_for_steering_->x, 2) +
-                             pow(cartesian_position.y - latest_cartesian_used_for_steering_->y, 2));
-      if (distance < 0.01)
-      {
-        return false;
-      }
-      return true;
-    }
+    bool is_steering_angle_computable(const CartesianPosition cartesian_position);
 
-    void convert_gnss_to_local_cartesian(sensor_msgs::msg::NavSatFix::ConstSharedPtr input, CartesianPosition &outputCartesianPosition)
-    {
-
-      proj.Forward(input->latitude,
-                   input->longitude,
-                   input->altitude,
-                   outputCartesianPosition.x,
-                   outputCartesianPosition.y,
-                   outputCartesianPosition.z);
-    }
+    void convert_gnss_to_local_cartesian(sensor_msgs::msg::NavSatFix::ConstSharedPtr input, CartesianPosition &outputCartesianPosition);
   };
 
 } // namespace roar
