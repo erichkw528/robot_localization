@@ -15,10 +15,9 @@ namespace roar
     // variables
     this->declare_parameter("map_frame", "map");
     this->declare_parameter("base_link_frame", "base_link");
-    this->declare_parameter("buffer_size", 5);
     this->declare_parameter("rate_millis", 50);
     this->declare_parameter("datum", "0.0,0.0,0.0");
-    this->declare_parameter("min_dist", 0.1);
+    this->declare_parameter("min_dist", 0.01);
 
     this->declare_parameter("debug", false);
     if (this->get_parameter("debug").as_bool())
@@ -81,18 +80,17 @@ namespace roar
     if (this->is_steering_angle_computable(cartesian_position))
     {
       // compute steering angle
-      double angle = std::atan2(cartesian_position.y - this->latest_cartesian_used_for_steering_->y,
-                                cartesian_position.x - this->latest_cartesian_used_for_steering_->x);
-      geometry_msgs::msg::Quaternion orientation = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), angle));
-
-      transformStamped.transform.rotation = orientation;
-      RCLCPP_DEBUG(this->get_logger(), "angle: %.6f", angle);
+      latest_steering_angle_ = std::atan2(cartesian_position.y - this->latest_cartesian_used_for_steering_->y,
+                                          cartesian_position.x - this->latest_cartesian_used_for_steering_->x);
+      RCLCPP_DEBUG(this->get_logger(), "angle: %.6f", latest_steering_angle_);
     }
     else
     {
-      RCLCPP_WARN(this->get_logger(), "Steering is not computable, skipping...");
+      RCLCPP_WARN(this->get_logger(), "Steering is not computable, skipping angle output. Assuming prev steering angle [%f]", latest_steering_angle_);
     }
+    geometry_msgs::msg::Quaternion orientation = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), latest_steering_angle_));
 
+    transformStamped.transform.rotation = orientation;
     // publish tf
     tf_broadcaster_->sendTransform(transformStamped);
 
