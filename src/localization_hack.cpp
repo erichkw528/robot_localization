@@ -27,9 +27,10 @@ namespace roar
     }
 
     this->parse_datum();
-
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+    qos.best_effort();
     subscription_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
-        "/gps/fix", 10, std::bind(&LocalizationHack::topic_callback, this, _1));
+        "/gps/fix", qos, std::bind(&LocalizationHack::topic_callback, this, _1));
 
     this->tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
   }
@@ -86,7 +87,7 @@ namespace roar
     }
     else
     {
-      RCLCPP_WARN(this->get_logger(), "Steering is not computable, skipping angle output. Assuming prev steering angle [%f]", latest_steering_angle_);
+      RCLCPP_DEBUG(this->get_logger(), "Assuming prev steering angle [%f]", latest_steering_angle_);
     }
     geometry_msgs::msg::Quaternion orientation = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), latest_steering_angle_));
 

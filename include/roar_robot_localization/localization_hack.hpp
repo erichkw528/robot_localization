@@ -72,7 +72,7 @@ namespace roar
     bool is_steering_angle_computable(const CartesianPosition cartesian_position);
 
     void convert_gnss_to_local_cartesian(sensor_msgs::msg::NavSatFix::ConstSharedPtr input, CartesianPosition &outputCartesianPosition);
-    float latest_steering_angle_ = 0.0;
+    float latest_steering_angle_ = -0.5;
   };
 
 } // namespace roar
