@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>roar_robot_localization</name>
+  <name>roar_gokart_localization</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="wuxiaohua1011@gmail.com">michael</maintainer>
@@ -17,6 +17,7 @@
   <depend>nav_msgs</depend>
   <depend>tf2_ros</depend>
   <depend>geographiclib</depend>
+  <depend>gps_msgs</depend>
 
 
   <test_depend>ament_lint_auto</test_depend>

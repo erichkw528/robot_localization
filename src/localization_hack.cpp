@@ -27,10 +27,14 @@ namespace roar
     }
 
     this->parse_datum();
+
     auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
     qos.best_effort();
-    subscription_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
-        "/gps/fix", qos, std::bind(&LocalizationHack::topic_callback, this, _1));
+    gps_sub_ = this->create_subscription<gps_msgs::msg::GPSFix>(
+        "/gps/gps", qos, std::bind(&LocalizationHack::topic_callback, this, _1));
+
+    odom_publisher_ =
+        this->create_publisher<nav_msgs::msg::Odometry>("/output/odom", 10);
 
     this->tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
   }
@@ -40,64 +44,81 @@ namespace roar
     // Perform any necessary cleanup here
   }
 
-  void LocalizationHack::topic_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps_msg)
+  void LocalizationHack::topic_callback(const gps_msgs::msg::GPSFix::SharedPtr gps_msg)
   {
-    // convert coordinate to cartesian space
-    CartesianPosition cartesian_position;
-    convert_gnss_to_local_cartesian(gps_msg, cartesian_position);
+    // publish transform
+    this->publishTransform(gps_msg);
 
-    // check if this data can be used to compute steering angle
-    // if yes, memorize this
-    // if not, do nothing
-    if (this->latest_cartesian_used_for_steering_ == nullptr)
-    {
-      this->latest_cartesian_used_for_steering_ = std::make_shared<CartesianPosition>(cartesian_position);
-      return;
-    }
+    // publish odom
+    this->publishOdom(gps_msg);
+    
+    // // convert coordinate to cartesian space
+    // CartesianPosition cartesian_position;
+    // convert_gnss_to_local_cartesian(gps_msg, cartesian_position);
 
-    RCLCPP_DEBUG(get_logger(), "---------------------");
+    // // check if this data can be used to compute steering angle
+    // // if yes, memorize this
+    // // if not, do nothing
+    // if (this->latest_cartesian_used_for_steering_ == nullptr)
+    // {
+    //   this->latest_cartesian_used_for_steering_ = std::make_shared<CartesianPosition>(cartesian_position);
+    //   return;
+    // }
 
-    geometry_msgs::msg::TransformStamped transformStamped;
-    transformStamped.header.stamp = this->now();
-    transformStamped.header.frame_id = this->get_parameter("map_frame").as_string();
-    transformStamped.child_frame_id = this->get_parameter("base_link_frame").as_string();
+    // RCLCPP_DEBUG(get_logger(), "---------------------");
 
-    // print latest_cartesian_used_for_steering
-    RCLCPP_DEBUG(this->get_logger(), "last: [%.6f, %.6f, %.6f]",
-                 this->latest_cartesian_used_for_steering_->x,
-                 this->latest_cartesian_used_for_steering_->y,
-                 this->latest_cartesian_used_for_steering_->z);
-    // print cartesian_pos
-    RCLCPP_DEBUG(this->get_logger(), "curr: [%.6f, %.6f, %.6f]",
-                 cartesian_position.x,
-                 cartesian_position.y,
-                 cartesian_position.z);
+    // geometry_msgs::msg::TransformStamped transformStamped;
+    // transformStamped.header.stamp = this->now();
+    // transformStamped.header.frame_id = this->get_parameter("map_frame").as_string();
+    // transformStamped.child_frame_id = this->get_parameter("base_link_frame").as_string();
 
-    // compute position
-    transformStamped.transform.translation.x = cartesian_position.x;
-    transformStamped.transform.translation.y = cartesian_position.y;
-    transformStamped.transform.translation.z = cartesian_position.z;
+    // // print latest_cartesian_used_for_steering
+    // RCLCPP_DEBUG(this->get_logger(), "last: [%.6f, %.6f, %.6f]",
+    //              this->latest_cartesian_used_for_steering_->x,
+    //              this->latest_cartesian_used_for_steering_->y,
+    //              this->latest_cartesian_used_for_steering_->z);
+    // // print cartesian_pos
+    // RCLCPP_DEBUG(this->get_logger(), "curr: [%.6f, %.6f, %.6f]",
+    //              cartesian_position.x,
+    //              cartesian_position.y,
+    //              cartesian_position.z);
 
-    if (this->is_steering_angle_computable(cartesian_position))
-    {
-      // compute steering angle
-      latest_steering_angle_ = std::atan2(cartesian_position.y - this->latest_cartesian_used_for_steering_->y,
-                                          cartesian_position.x - this->latest_cartesian_used_for_steering_->x);
-      RCLCPP_DEBUG(this->get_logger(), "angle: %.6f", latest_steering_angle_);
-    }
-    else
-    {
-      RCLCPP_DEBUG(this->get_logger(), "Assuming prev steering angle [%f]", latest_steering_angle_);
-    }
-    geometry_msgs::msg::Quaternion orientation = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), latest_steering_angle_));
+    // // compute position
+    // transformStamped.transform.translation.x = cartesian_position.x;
+    // transformStamped.transform.translation.y = cartesian_position.y;
+    // transformStamped.transform.translation.z = cartesian_position.z;
 
-    transformStamped.transform.rotation = orientation;
-    // publish tf
-    tf_broadcaster_->sendTransform(transformStamped);
+    // if (this->is_steering_angle_computable(cartesian_position))
+    // {
+    //   // compute steering angle
+    //   latest_steering_angle_ = std::atan2(cartesian_position.y - this->latest_cartesian_used_for_steering_->y,
+    //                                       cartesian_position.x - this->latest_cartesian_used_for_steering_->x);
+    //   RCLCPP_DEBUG(this->get_logger(), "angle: %.6f", latest_steering_angle_);
+    // }
+    // else
+    // {
+    //   RCLCPP_DEBUG(this->get_logger(), "Assuming prev steering angle [%f]", latest_steering_angle_);
+    // }
+    // geometry_msgs::msg::Quaternion orientation = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), latest_steering_angle_));
 
-    RCLCPP_DEBUG(this->get_logger(), "GNSS: [%.6f, %.6f, %.6f]", gps_msg->latitude, gps_msg->longitude, gps_msg->altitude);
-    RCLCPP_DEBUG(this->get_logger(), "local_coord: [%.6f, %.6f, %.6f]", cartesian_position.x, cartesian_position.y, cartesian_position.z);
-    this->latest_cartesian_used_for_steering_ = std::make_shared<CartesianPosition>(cartesian_position);
+    // transformStamped.transform.rotation = orientation;
+    // // publish tf
+    // tf_broadcaster_->sendTransform(transformStamped);
+
+    // // publish odom
+    // this->publishOdom(std::make_shared<geometry_msgs::msg::TransformStamped>(transformStamped));
+
+    // RCLCPP_DEBUG(this->get_logger(), "GNSS: [%.6f, %.6f, %.6f]", gps_msg->latitude, gps_msg->longitude, gps_msg->altitude);
+    // RCLCPP_DEBUG(this->get_logger(), "local_coord: [%.6f, %.6f, %.6f]", cartesian_position.x, cartesian_position.y, cartesian_position.z);
+    // this->latest_cartesian_used_for_steering_ = std::make_shared<CartesianPosition>(cartesian_position);
+  }
+
+  void LocalizationHack::publishOdom(const gps_msgs::msg::GPSFix::SharedPtr gps_msg)
+  {
+  }
+
+  void LocalizationHack::publishTransform(const gps_msgs::msg::GPSFix::SharedPtr gps_msg)
+  {
   }
 
   void LocalizationHack::parse_datum()
@@ -152,7 +173,7 @@ namespace roar
     return true;
   }
 
-  void LocalizationHack::convert_gnss_to_local_cartesian(sensor_msgs::msg::NavSatFix::ConstSharedPtr input, CartesianPosition &outputCartesianPosition)
+  void LocalizationHack::convert_gnss_to_local_cartesian(gps_msgs::msg::GPSFix::ConstSharedPtr input, CartesianPosition &outputCartesianPosition)
   {
     proj.Forward(input->latitude,
                  input->longitude,

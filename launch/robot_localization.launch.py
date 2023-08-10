@@ -25,19 +25,19 @@ def generate_launch_description():
 
     """localization_hack"""
     odom_publisher = launch_ros.actions.Node(
-        package="roar_robot_localization",
+        package="roar_gokart_localization",
         executable="localizationHack",
         name="localization_hack",
         output="screen",
         parameters=[
             os.path.join(
-                get_package_share_directory("roar_robot_localization"),
+                get_package_share_directory("roar_gokart_localization"),
                 "params",
                 "configs.yaml",
             ),
         ],
         remappings=[
-            ("/gps/fix", "/roar/gnss"),
+            ("/gps/fix", "/gps/fix"),
             ("/gps/imu", "/gps/imu"),
             ("/gps/pose", "/gps/pose"),
         ],

@@ -4,6 +4,6 @@
     base_link_frame: base_link
     datum: "37.91479456,-122.3342746,0.0"
     rate_millis: 100
-    use_sim_time: true
-    debug: false
+    use_sim_time: false
+    debug: true
     min_dist: 0.01

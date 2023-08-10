@@ -6,7 +6,7 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
-#include <sensor_msgs/msg/nav_sat_fix.hpp>
+#include <gps_msgs/msg/gps_fix.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <iomanip> // Include the <iomanip> header for setprecision
@@ -14,6 +14,8 @@
 #include "GeographicLib/Geocentric.hpp"
 #include "GeographicLib/LocalCartesian.hpp"
 #include "std_msgs/msg/string.hpp"
+#include <nav_msgs/msg/odometry.hpp>
+
 using std::placeholders::_1;
 
 namespace roar
@@ -22,7 +24,7 @@ namespace roar
   struct BufferData
   {
     sensor_msgs::msg::Imu::ConstSharedPtr imu_msg;
-    sensor_msgs::msg::NavSatFix::ConstSharedPtr gps_msg;
+    gps_msgs::msg::GPSFix::ConstSharedPtr gps_msg;
     geometry_msgs::msg::PoseStamped::ConstSharedPtr pose_msg;
   };
 
@@ -39,8 +41,7 @@ namespace roar
     double altitude;
   };
 
-  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::NavSatFix,
-                                                          geometry_msgs::msg::PoseStamped>
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, gps_msgs::msg::GPSFix>
       ApproximateSyncPolicy;
   class LocalizationHack : public rclcpp::Node
   {
@@ -49,16 +50,13 @@ namespace roar
     ~LocalizationHack();
 
   protected:
-    // subscribers
-    message_filters::Subscriber<sensor_msgs::msg::Imu> imu_sub_;
-    message_filters::Subscriber<sensor_msgs::msg::NavSatFix> gps_sub_;
-    message_filters::Subscriber<geometry_msgs::msg::PoseStamped> pose_sub_;
-    std::shared_ptr<message_filters::Synchronizer<ApproximateSyncPolicy>> temp_sync_;
-
-    rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subscription_;
-    void topic_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps_msg);
+    rclcpp::Subscription<gps_msgs::msg::GPSFix>::SharedPtr gps_sub_;
+    void topic_callback(const gps_msgs::msg::GPSFix::SharedPtr gps_msg);
     // publisher
     void parse_datum();
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher_;
+    void publishOdom(const gps_msgs::msg::GPSFix::SharedPtr gps_msg);
+    void publishTransform(const gps_msgs::msg::GPSFix::SharedPtr gps_msg);
 
     std::unique_ptr<tf2_ros::TransformBroadcaster>
         tf_broadcaster_;
@@ -67,11 +65,10 @@ namespace roar
     GeographicLib::LocalCartesian proj;
     GeodeticPosition map_origin_;
 
-    std::shared_ptr<geometry_msgs::msg::TransformStamped> latest_transform_;
     std::shared_ptr<CartesianPosition> latest_cartesian_used_for_steering_;
     bool is_steering_angle_computable(const CartesianPosition cartesian_position);
 
-    void convert_gnss_to_local_cartesian(sensor_msgs::msg::NavSatFix::ConstSharedPtr input, CartesianPosition &outputCartesianPosition);
+    void convert_gnss_to_local_cartesian(gps_msgs::msg::GPSFix::ConstSharedPtr input, CartesianPosition &outputCartesianPosition);
     float latest_steering_angle_ = -0.5;
   };
 
