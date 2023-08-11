@@ -55,9 +55,8 @@ namespace roar
     // publisher
     void parse_datum();
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher_;
-    void publishOdom(const gps_msgs::msg::GPSFix::SharedPtr gps_msg);
-    void publishTransform(const gps_msgs::msg::GPSFix::SharedPtr gps_msg);
-
+    void publishTransformFromOdom(const nav_msgs::msg::Odometry::SharedPtr odom);
+    std::shared_ptr<nav_msgs::msg::Odometry> computeOdomFromGps(const gps_msgs::msg::GPSFix::SharedPtr gps_msg);
     std::unique_ptr<tf2_ros::TransformBroadcaster>
         tf_broadcaster_;
 
@@ -65,11 +64,11 @@ namespace roar
     GeographicLib::LocalCartesian proj;
     GeodeticPosition map_origin_;
 
-    std::shared_ptr<CartesianPosition> latest_cartesian_used_for_steering_;
     bool is_steering_angle_computable(const CartesianPosition cartesian_position);
-
     void convert_gnss_to_local_cartesian(gps_msgs::msg::GPSFix::ConstSharedPtr input, CartesianPosition &outputCartesianPosition);
-    float latest_steering_angle_ = -0.5;
+    float getYawFromOdom(const nav_msgs::msg::Odometry::SharedPtr odom);
+    std::shared_ptr<nav_msgs::msg::Odometry> last_odom_;
+    // bool isFarFromLastOdom(const nav_msgs::msg::Odometry *odom);
   };
 
 } // namespace roar
